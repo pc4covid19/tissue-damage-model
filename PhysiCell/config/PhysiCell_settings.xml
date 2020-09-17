@@ -159,6 +159,7 @@
 			<Dirichlet_boundary_condition units="mol/micron^3" enabled="false">0</Dirichlet_boundary_condition>
 		</variable>
 
+
 		<variable name="chemokine" units="mol/micron^3" ID="4">
 			<physical_parameter_set>
 				<diffusion_coefficient units="micron^2/min">555.56</diffusion_coefficient>
@@ -172,6 +173,15 @@
 			<physical_parameter_set>
 				<diffusion_coefficient units="micron^2/min">555.56</diffusion_coefficient>
 				<decay_rate units="1/min">1.02e-2</decay_rate>  
+			</physical_parameter_set>
+			<initial_condition units="mol/micron^3">0</initial_condition>
+			<Dirichlet_boundary_condition units="mol/micron^3" enabled="false">0</Dirichlet_boundary_condition>
+		</variable>
+
+		<variable name="anti-inflammatory cytokine" units="mol/micron^3" ID="6">
+			<physical_parameter_set>
+				<diffusion_coefficient units="micron^2/min">555.56</diffusion_coefficient>
+				<decay_rate units="1/min">1.02e-2</decay_rate>
 			</physical_parameter_set>
 			<initial_condition units="mol/micron^3">0</initial_condition>
 			<Dirichlet_boundary_condition units="mol/micron^3" enabled="false">0</Dirichlet_boundary_condition>
@@ -296,7 +306,10 @@
 					</substrate> 	
 					<substrate name="debris">
 						<secretion_target units="dimensionless substrate concentration">1</secretion_target>
-					</substrate> 	
+					</substrate>
+					<substrate name="anti-inflammatory cytokine">
+						<secretion_target units="dimensionless substrate concentration">1</secretion_target>
+					</substrate>
 				</secretion>
 
 				<molecular />
@@ -372,7 +385,7 @@
 					description="the mean duration of a cell-cell attachment">0</cell_attachment_lifetime>
 				
 				<TCell_contact_death_threshold units="min" type="double"
-					description="threshold CD8 T cell contact time to trigger apoptosis">50</TCell_contact_death_threshold> <!-- 50 -->
+					description="threshold CD8 T cell contact time to trigger apoptosis">25</TCell_contact_death_threshold> <!-- 50 -->
 				<max_attachment_distance units="micron" type="double"
 					desription="max distance at which to form a cell-cell attachment">15</max_attachment_distance>
 				<elastic_attachment_coefficient units="1/min" type="double"
@@ -612,6 +625,37 @@
 
 			</custom_data>
 		</cell_definition>
+
+		<cell_definition name="fibroblast" parent_type="immune" ID="6">
+			<phenotype>
+				<death>
+					<model code="100" name="apoptosis">
+						<death_rate units="1/min">2.8e-4</death_rate>
+					</model>
+				</death>
+
+				<motility>
+					<migration_bias units="dimensionless">0.70</migration_bias>
+					<options>
+						<enabled>true</enabled>
+						<use_2D>true</use_2D>
+						<chemotaxis>
+							<enabled>true</enabled>
+							<substrate>anti-inflammatory cytokine</substrate>
+							<direction>1</direction>
+						</chemotaxis>
+					</options>
+				</motility>
+
+
+				<volume>
+					<total units="micron^3">1437</total>
+					<nuclear units="micron^3">143.7</nuclear>
+				</volume>
+			</phenotype>
+			<custom_data>
+			</custom_data>
+		</cell_definition>
 		
 	</cell_definitions>
 	
@@ -644,13 +688,20 @@
 			<CD8_Tcell_max_recruitment_rate type="double" units="cells/min/micron^3"
 				description="max CD8 T cell recruitment rate (for saturated signal)">4e-9</CD8_Tcell_max_recruitment_rate> <!-- 4e-9 debug -->
 			<CD8_Tcell_recruitment_min_signal type="double" units="substrate/micron^3"
-				description="min concentration to attract CD8 T cells">0.4</CD8_Tcell_recruitment_min_signal> <!-- 0.3 debug -->
+				description="min concentration to attract CD8 T cells">0.1</CD8_Tcell_recruitment_min_signal> <!-- 0.3 debug -->
 			<CD8_Tcell_recruitment_saturation_signal type="double" units="substrate/micron^3"
-				description="saturating concentration to attract CD8 T cells">0.7</CD8_Tcell_recruitment_saturation_signal> <!-- 0.7 debug -->
-		
+				description="saturating concentration to attract CD8 T cells">0.4</CD8_Tcell_recruitment_saturation_signal> <!-- 0.7 debug -->
+
+			<fibroblast_max_recruitment_rate type="double" units="cells/min/micron^3"
+				description="max fibroblast cell recruitment rate (for saturated signal)">4e-9</fibroblast_max_recruitment_rate> <!-- 4e-9 debug -->
+			<fibroblast_recruitment_min_signal type="double" units="substrate/micron^3"
+				description="min concentration to attract fibroblast cells">0.1</fibroblast_recruitment_min_signal> <!-- 0.3 debug -->
+			<fibroblast_recruitment_saturation_signal type="double" units="substrate/micron^3"
+				description="saturating concentration to attract fibroblast cells">0.4</fibroblast_recruitment_saturation_signal> <!-- 0.7 debug -->
+
 		<div_initialization type="divider" description="---Initialization Options--"/>
 			<multiplicity_of_infection type="double" units="none" 
-				description="multiplicity of infection: virions/cells at t=0">0.1</multiplicity_of_infection> <!-- 0.01 debug -->
+				description="multiplicity of infection: virions/cells at t=0">0.01</multiplicity_of_infection> <!-- 0.01 debug -->
 			<use_single_infected_cell type="bool" units="none" 
 				description="Infect center cell with one virion (overrides MOI)">false</use_single_infected_cell>
 			
@@ -660,6 +711,8 @@
 				description="initial number of macrophages">50</number_of_macrophages>
 			<number_of_neutrophils type="int" units="none" 
 				description="initial number of neutrophils">0</number_of_neutrophils>
+			<number_of_fibroblast type="int" units="none"
+				description="initial number of fibroblast cells">0</number_of_fibroblast>
 			
 			<perecentage_tissue_vascularized units="percentage" type="double"
 				description="percentage of tissue sitting above blood vessels">8.8</perecentage_tissue_vascularized>			
@@ -676,6 +729,8 @@
 				description="lung epithelium color">blue</lung_epithelium_color> -->
 			<CD8_Tcell_color type="string" 
 				description="CD8 T cell color">red</CD8_Tcell_color>
+			<fibroblast_color type="string"
+				description="fibroblast cell color">orange</fibroblast_color>
 			<Macrophage_color type="string" 
 				description="macrophage color">lime</Macrophage_color>
 			<activated_macrophage_color type="string" 
