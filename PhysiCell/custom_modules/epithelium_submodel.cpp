@@ -143,7 +143,8 @@ void epithelium_submodel_setup( void )
 	epithelium_submodel_info.microenvironment_variables.push_back( "virion" ); 
 	epithelium_submodel_info.microenvironment_variables.push_back( "interferon 1" ); 
 	epithelium_submodel_info.microenvironment_variables.push_back( "pro-inflammatory cytokine" ); 
-	epithelium_submodel_info.microenvironment_variables.push_back( "chemokine" ); 
+	epithelium_submodel_info.microenvironment_variables.push_back( "chemokine" );
+	epithelium_submodel_info.microenvironment_variables.push_back( "anti-inflammatory cytokine" );
 		// what custom data do I need? 
 	//epithelium_submodel_info.cell_variables.push_back( "something" ); 
 		// register the submodel  
@@ -162,6 +163,7 @@ void TCell_induced_apoptosis( Cell* pCell, Phenotype& phenotype, double dt )
 	static int apoptosis_index = phenotype.death.find_death_model_index( "Apoptosis" ); 
 	static int debris_index = microenvironment.find_density_index( "debris" ); 
 	static int proinflammatory_cytokine_index = microenvironment.find_density_index("pro-inflammatory cytokine");
+	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
 	
 	if( pCell->custom_data["TCell_contact_time"] > pCell->custom_data["TCell_contact_death_threshold"] )
 	{
@@ -177,7 +179,8 @@ void TCell_induced_apoptosis( Cell* pCell, Phenotype& phenotype, double dt )
 		// induce death 
 		pCell->start_death( apoptosis_index ); 
 		
-		pCell->phenotype.secretion.secretion_rates[proinflammatory_cytokine_index] = 0; 
+		pCell->phenotype.secretion.secretion_rates[proinflammatory_cytokine_index] = 0;
+		pCell->phenotype.secretion.secretion_rates[antiinflammatory_cytokine_index] = 15;   // make it constant supply
 		pCell->phenotype.secretion.secretion_rates[debris_index] = pCell->custom_data["debris_secretion_rate"]; 
 		
 		pCell->functions.update_phenotype = NULL; 
