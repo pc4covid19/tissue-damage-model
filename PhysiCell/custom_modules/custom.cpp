@@ -357,6 +357,7 @@ std::vector<std::string> tissue_coloring_function( Cell* pCell )
 	static int CD8_Tcell_type = get_cell_definition( "CD8 Tcell" ).type; 
 	static int Macrophage_type = get_cell_definition( "macrophage" ).type; 
 	static int Neutrophil_type = get_cell_definition( "neutrophil" ).type; 
+	static int fibroblast_type = get_cell_definition( "fibroblast" ).type; 
 	
 	// start with white 
 	
@@ -413,6 +414,15 @@ std::vector<std::string> tissue_coloring_function( Cell* pCell )
 		output[3] = output[0];
 		return output; 
 	}
+
+	if( pCell->phenotype.death.dead == false && pCell->type == fibroblast_type )
+	{
+		output[0] = parameters.strings("fibroblast_color");  
+		output[2] = output[0];
+		output[3] = output[0];
+		return output; 
+	}
+	
 
 	return output; 
 }

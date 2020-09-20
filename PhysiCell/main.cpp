@@ -272,10 +272,12 @@ int main( int argc, char* argv[] )
 	extern int recruited_neutrophils; 
 	extern int recruited_Tcells; 
 	extern int recruited_macrophages; 
+	extern int recruited_fibroblasts;
 	
 	extern double first_macrophage_recruitment_time;
 	extern double first_neutrophil_recruitment_time; 
 	extern double first_CD8_T_cell_recruitment_time; 
+	extern double first_fibroblast_cell_recruitment_time;
 
 	std::cout << std::endl; 
 	std::cout << "recruited macrophges: " << recruited_macrophages << " starting at time " 
@@ -284,9 +286,13 @@ int main( int argc, char* argv[] )
 		<< first_neutrophil_recruitment_time << std::endl; 
 	std::cout << "recruited T cells: " << recruited_Tcells << " starting at time "
 		<< first_CD8_T_cell_recruitment_time << std::endl << std::endl; 	
+	std::cout << "recruited fibroblasts: " << recruited_fibroblasts << " starting at time "
+		<< first_fibroblast_cell_recruitment_time << std::endl << std::endl; 	
+
 	recruited_neutrophils = 0; 
 	recruited_Tcells = 0; 
 	recruited_macrophages = 0; 
+	recruited_fibroblasts = 0;
 
 	for( int n =0 ; n < (*all_cells).size() ; n++ )
 	{
@@ -297,11 +303,14 @@ int main( int argc, char* argv[] )
 		{ recruited_Tcells++; }
 		if( pC->type == 4 )
 		{ recruited_macrophages++; }
+		if( pC->type == 6 )
+		{ recruited_fibroblasts++; }
 
 	}
 	std::cout << "remaining macrophages: " << recruited_macrophages << std::endl; 
 	std::cout << "remaining neutrophils: " << recruited_neutrophils << std::endl; 
 	std::cout << "remaining T cells: " << recruited_Tcells << std::endl; 
+	std::cout << "remaining fibroblast cells: " << recruited_fibroblasts << std::endl; 
 	
 	return 0; 
 }
