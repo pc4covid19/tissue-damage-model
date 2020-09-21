@@ -5,10 +5,11 @@ using namespace PhysiCell;
 std::string immune_submodels_version = "0.1.2"; 
 // Submodel_Information Immune_submodels_info; // not needed for now 
 
-Submodel_Information fibroblast_submodel_info;
-Submodel_Information CD8_submodel_info;
+Submodel_Information CD8_submodel_info; 
 Submodel_Information Macrophage_submodel_info; 
 Submodel_Information Neutrophil_submodel_info; 
+Submodel_Information fibroblast_submodel_info; 
+
 
 std::vector<Cell*> cells_to_move_from_edge; 
 
@@ -366,55 +367,10 @@ void create_infiltrating_macrophage(void)
 void create_infiltrating_fibroblast(void)
 {
 	static Cell_Definition* pCD = find_cell_definition( "fibroblast" );
-	create_infiltrating_immune_cell( pCD );
-
+	create_infiltrating_immune_cell( pCD ); 
+	
 	return;
 }
-
-void fibroblast_phenotype( Cell* pCell, Phenotype& phenotype, double dt )
-{
-	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
-
-	if( phenotype.death.dead == true )
-	{
-		pCell->functions.update_phenotype = NULL;
-		pCell->functions.custom_cell_rule = NULL;
-
-		return;
-	}
-
-	return;
-}
-
-
-void fibroblast_mechanics( Cell* pCell, Phenotype& phenotype, double dt )
-{
-	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
-
-	if( phenotype.death.dead == true )
-	{
-		pCell->functions.update_phenotype = NULL;
-		pCell->functions.custom_cell_rule = NULL;
-
-		return;
-	}
-
-	// bounds check
-	if( check_for_out_of_bounds( pCell , 10.0 ) )
-	{
-		#pragma omp critical
-		{ cells_to_move_from_edge.push_back( pCell ); }
-		// replace_out_of_bounds_cell( pCell, 10.0 );
-		// return;
-	}
-
-
-	phenotype.motility.is_motile = true; // make the motility towards anti-inflammatory cytokines
-
-	return;
-}
-
-
 
 void CD8_Tcell_contact_function( Cell* pC1, Phenotype& p1, Cell* pC2, Phenotype& p2 , double dt )
 {
@@ -762,24 +718,62 @@ void neutrophil_mechanics( Cell* pCell, Phenotype& phenotype, double dt )
 	return; 
 }
 
+
+void fibroblast_phenotype( Cell* pCell, Phenotype& phenotype, double dt)
+{
+	
+	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
+	static int collagen_index = microenvironment.find_density_index("collagen");
+
+
+    //std::vector<double> T_density = microenvironment.operator()(microenvironment.voxel_index)[antiinflammatory_cytokine_index]
+    //std::cout << T_density << " T_density ... " << std::endl;
+
+	pCell->phenotype.secretion.secretion_rates[collagen_index] = (pCell->custom_data["collagen_secretion_rate"])*0.014;
+
+
+			
+	
+	if( phenotype.death.dead == true )
+	{
+		pCell->functions.update_phenotype = NULL;
+		pCell->functions.custom_cell_rule = NULL; 
+
+        // This should be careful, as anti-inflammatory cytokine only be secreted when CD8-T cells killing infected epithelium cell rather 
+        // than epithelium cell apoptotic due to virion
+		// pCell->phenotype.secretion.secretion_rates[antiinflammatory_cytokine_index] = pCell->custom_data["antiinflammatory_cytokine_secretion_rate"]; 
+		return; 
+	}
+
+	return;
+}
+
+
+void fibroblast_mechanics( Cell* pCell, Phenotype& phenotype, double dt )
+{
+
+	// bounds check 
+	if( check_for_out_of_bounds( pCell , 10.0 ) )
+	{ 
+		#pragma omp critical 
+		{ cells_to_move_from_edge.push_back( pCell ); }
+		// replace_out_of_bounds_cell( pCell, 10.0 );
+		// return; 
+	}	
+
+//	// death check 
+//	if( phenotype.death.dead == true ) 
+//	{ remove_all_adhesions( pCell ); }
+
+	return; 
+}
+
+
 void immune_submodels_setup( void )
 {
 	Cell_Definition* pCD;
 	
-	//
-
-	fibroblast_submodel_info.name = "fibroblast model";
-	fibroblast_submodel_info.version = immune_submodels_version;
-	fibroblast_submodel_info.main_function = NULL;
-	fibroblast_submodel_info.phenotype_function = fibroblast_phenotype;
-	fibroblast_submodel_info.mechanics_function = fibroblast_mechanics;
-	fibroblast_submodel_info.microenvironment_variables.push_back( "anti-inflammatory cytokine" );
-	fibroblast_submodel_info.register_model();
-
-	pCD = find_cell_definition( "fibroblast" );
-	pCD->functions.update_phenotype = fibroblast_submodel_info.phenotype_function;
-	pCD->functions.custom_cell_rule = fibroblast_submodel_info.mechanics_function;
-
+	// 
 	// set up CD8 Tcells
 		// set version info 
 	CD8_submodel_info.name = "CD8 Tcell model"; 
@@ -844,6 +838,25 @@ void immune_submodels_setup( void )
 	pCD = find_cell_definition( "neutrophil" ); 
 	pCD->functions.update_phenotype = Neutrophil_submodel_info.phenotype_function;
 	pCD->functions.custom_cell_rule = Neutrophil_submodel_info.mechanics_function;	
+	pCD->functions.update_migration_bias = immune_cell_motility_direction; 
+
+
+	// set up fibroblast
+	fibroblast_submodel_info = CD8_submodel_info; // much shared information 
+	fibroblast_submodel_info.name = "fibroblast model"; 
+	fibroblast_submodel_info.version = immune_submodels_version; 
+	
+	fibroblast_submodel_info.main_function = NULL; 
+	fibroblast_submodel_info.phenotype_function = fibroblast_phenotype; 
+	fibroblast_submodel_info.mechanics_function = fibroblast_mechanics; 
+	
+	fibroblast_submodel_info.register_model();	
+		// set functions for the corresponding cell definition 
+	pCD = find_cell_definition( "fibroblast" ); 
+	pCD->functions.update_phenotype = fibroblast_submodel_info.phenotype_function;
+	pCD->functions.custom_cell_rule = fibroblast_submodel_info.mechanics_function;
+	
+    // needs to rewrite 
 	pCD->functions.update_migration_bias = immune_cell_motility_direction; 
 	
 }
@@ -933,21 +946,21 @@ Cell* immune_cell_check_neighbors_for_attachment( Cell* pAttacker , double dt )
 
 int recruited_Tcells = 0; 
 int recruited_neutrophils = 0; 
-int recruited_macrophages = 0;
-int recruited_fibroblast = 0;
+int recruited_macrophages = 0; 
+int recruited_fibroblasts = 0;
 
 double first_macrophage_recruitment_time = 9e9; 
 double first_neutrophil_recruitment_time = 9e9; 
-double first_CD8_T_cell_recruitment_time = 9e9;
+double first_CD8_T_cell_recruitment_time = 9e9; 
 double first_fibroblast_cell_recruitment_time = 9e9;
 
 void immune_cell_recruitment( double dt )
 {
 	static int proinflammatory_cytokine_index = 
 		microenvironment.find_density_index("pro-inflammatory cytokine");
-	
 	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
-	static double dt_immune = parameters.doubles( "immune_dt" );
+	
+	static double dt_immune = parameters.doubles( "immune_dt" ); 
 	static double t_immune = 0.0; 
 	static double t_last_immune = 0.0; 
 	static double t_next_immune = 0.0; 
@@ -1014,7 +1027,7 @@ void immune_cell_recruitment( double dt )
 		total_scaled_signal= 0.0;
 		for( int n=0; n<microenvironment.mesh.voxels.size(); n++ )
 		{
-			// (signal(x)-signal_min)/(signal_max/signal_min)
+		    // (signal(x)-signal_min)/(signal_max/signal_min)
 			double dRate = ( microenvironment(n)[proinflammatory_cytokine_index] - NR_min_signal ); 
 			dRate /= NR_max_minus_min; 
 			// crop to [0,1] 
@@ -1044,9 +1057,9 @@ void immune_cell_recruitment( double dt )
 			for( int n = 0; n < number_of_new_cells ; n++ )
 			{ create_infiltrating_neutrophil(); }
 		}
-		
 
-		//fibroblast recruitment
+
+	    //  fibroblast recruitment
 		static double fibroblast_recruitment_rate = parameters.doubles( "fibroblast_max_recruitment_rate" );
 		static double f_min_signal = parameters.doubles( "fibroblast_recruitment_min_signal" );
 		static double f_sat_signal = parameters.doubles( "fibroblast_recruitment_saturation_signal" );
@@ -1075,7 +1088,7 @@ void immune_cell_recruitment( double dt )
 
 		// expected number of new fibroblast
 		number_of_new_cells = (int) round( total_rate * elapsed_time );
-		recruited_Tcells += number_of_new_cells;
+		recruited_fibroblasts += number_of_new_cells;
 
 		if( number_of_new_cells )
 		{
@@ -1087,13 +1100,14 @@ void immune_cell_recruitment( double dt )
 			for( int n = 0; n < number_of_new_cells ; n++ )
 			{ create_infiltrating_fibroblast(); }
 		}
+		
 
-		// CD8 Tcell recruitment
+		// CD8 Tcell recruitment 
 		
 		static double CD8_Tcell_recruitment_rate = parameters.doubles( "CD8_Tcell_max_recruitment_rate" ); 
-		static double TC_min_signal = parameters.doubles( "CD8_Tcell_recruitment_min_signal" );
-		static double TC_sat_signal = parameters.doubles( "CD8_Tcell_recruitment_saturation_signal" );
-		static double TC_max_minus_min = TC_sat_signal - TC_min_signal;
+		static double TC_min_signal = parameters.doubles( "CD8_Tcell_recruitment_min_signal" ); 
+		static double TC_sat_signal = parameters.doubles( "CD8_Tcell_recruitment_saturation_signal" ); 
+		static double TC_max_minus_min = TC_sat_signal - TC_min_signal; 
 		
 		total_rate = 0;
 		// integrate \int_domain r_max * (signal-signal_min)/(signal_max-signal_min) * dV 
@@ -1101,8 +1115,8 @@ void immune_cell_recruitment( double dt )
 		for( int n=0; n<microenvironment.mesh.voxels.size(); n++ )
 		{
 			// (signal(x)-signal_min)/(signal_max/signal_min)
-			double dRate = ( microenvironment(n)[proinflammatory_cytokine_index] - TC_min_signal );
-			dRate /= TC_max_minus_min;
+			double dRate = ( microenvironment(n)[proinflammatory_cytokine_index] - TC_min_signal ); 
+			dRate /= TC_max_minus_min; 
 			// crop to [0,1] 
 			if( dRate > 1 ) 
 			{ dRate = 1; } 
@@ -1144,16 +1158,12 @@ void initial_immune_cell_placement( void )
 {
 	Cell_Definition* pCD8 = find_cell_definition( "CD8 Tcell" ); 
 	Cell_Definition* pMF = find_cell_definition( "macrophage" ); 
-	Cell_Definition* pN = find_cell_definition( "neutrophil" );
+	Cell_Definition* pN = find_cell_definition( "neutrophil" ); 
 	Cell_Definition* pF = find_cell_definition( "fibroblast" );
 	
 	// CD8+ T cells; 
 	for( int n = 0 ; n < parameters.ints("number_of_CD8_Tcells") ; n++ )
-	{ create_infiltrating_immune_cell( pCD8 ); }
-
-	// Fibroblast cells;
-	for( int n = 0 ; n < parameters.ints("number_of_fibroblast") ; n++ )
-	{ create_infiltrating_immune_cell( pF ); }
+	{ create_infiltrating_immune_cell( pCD8 ); }		
 
 	// macrophages 
 	for( int n = 0 ; n < parameters.ints("number_of_macrophages") ; n++ )
@@ -1161,7 +1171,11 @@ void initial_immune_cell_placement( void )
 
 	// neutrophils 	
 	for( int n = 0 ; n < parameters.ints("number_of_neutrophils") ; n++ )
-	{ create_infiltrating_immune_cell( pN ); }		
+	{ create_infiltrating_immune_cell( pN ); }	
+
+	// fibroblast 	
+	for( int n = 0 ; n < parameters.ints("number_of_fibroblast") ; n++ )
+	{ create_infiltrating_immune_cell( pF ); }			
 
 	return;
 }
