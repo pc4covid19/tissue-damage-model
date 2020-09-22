@@ -507,6 +507,22 @@ void immune_cell_motility_direction( Cell* pCell, Phenotype& phenotype , double 
 	return; 
 }
 
+
+void fibroblast_motility_direction( Cell* pCell, Phenotype& phenotype , double dt )
+{
+	if( phenotype.death.dead == true )
+	{
+		phenotype.motility.migration_speed = 0.0; 
+		return;
+	}
+	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
+	phenotype.motility.migration_bias_direction = pCell->nearest_gradient(antiinflammatory_cytokine_index);
+	normalize( &phenotype.motility.migration_bias_direction ); 
+	
+	return; 
+}
+
+
 void macrophage_phenotype( Cell* pCell, Phenotype& phenotype, double dt )
 {
 	static int apoptosis_index = phenotype.death.find_death_model_index( "Apoptosis" ); 
@@ -724,12 +740,11 @@ void fibroblast_phenotype( Cell* pCell, Phenotype& phenotype, double dt )
 	
 	static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
 	static int collagen_index = microenvironment.find_density_index("collagen");
+	double TGF_beta = pCell->nearest_density_vector()[antiinflammatory_cytokine_index];
 
-	pCell->phenotype.secretion.secretion_rates[collagen_index] = pCell->custom_data["collagen_secretion_rate"]; 
+	pCell->phenotype.secretion.secretion_rates[collagen_index] = 0.0092*pow(TGF_beta, 3) - 0.1552*pow(TGF_beta, 2) + 0.6279*TGF_beta;
 
-
-			
-	
+	       
 	if( phenotype.death.dead == true )
 	{
 		pCell->functions.update_phenotype = NULL;
@@ -853,7 +868,7 @@ void immune_submodels_setup( void )
 	pCD->functions.custom_cell_rule = fibroblast_submodel_info.mechanics_function;
 	
     // needs to rewrite 
-	pCD->functions.update_migration_bias = immune_cell_motility_direction; 
+	pCD->functions.update_migration_bias = fibroblast_motility_direction; 
 	
 }
 
@@ -1067,7 +1082,8 @@ void immune_cell_recruitment( double dt )
 		for( int n=0; n<microenvironment.mesh.voxels.size(); n++ )
 		{
 			// (signal(x)-signal_min)/(signal_max/signal_min)
-			double dRate = ( microenvironment(n)[antiinflammatory_cytokine_index] - f_min_signal );
+			double TGF_beta = microenvironment(n)[antiinflammatory_cytokine_index]; 
+			double dRate = ( 0.0492*pow(TGF_beta,3) -0.9868*pow(TGF_beta,2) +6.5408*TGF_beta - f_min_signal );
 			dRate /= f_max_minus_min;
 			// crop to [0,1]
 			if( dRate > 1 )
