@@ -75,7 +75,6 @@
 #include "./receptor_dynamics.h" 
 #include "./immune_submodels.h" 
 #include "./epithelium_submodel.h" 
-#include "./DC_history.h"
 
 using namespace BioFVM; 
 using namespace PhysiCell;
