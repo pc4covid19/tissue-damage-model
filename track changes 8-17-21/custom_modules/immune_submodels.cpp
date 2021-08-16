@@ -12,6 +12,7 @@ Submodel_Information Neutrophil_submodel_info;
 Submodel_Information DC_submodel_info; 
 Submodel_Information CD4_submodel_info;
 Submodel_Information fibroblast_submodel_info;
+Submodel_Information residual_submodel_info;
 
 std::vector<Cell*> cells_to_move_from_edge; 
 
@@ -1147,6 +1148,30 @@ void fibroblast_mechanics( Cell* pCell, Phenotype& phenotype, double dt )
 	return; 
 }
 
+void residual_phenotype( Cell* pCell, Phenotype& phenotype, double dt )
+{
+
+    static int antiinflammatory_cytokine_index = microenvironment.find_density_index("anti-inflammatory cytokine");
+    pCell->phenotype.secretion.secretion_rates[antiinflammatory_cytokine_index] = pCell->custom_data["antiinflammatory_cytokine_secretion_rate_by_damagedSite"];
+
+	return;
+}
+
+void residual_mechanics( Cell* pCell, Phenotype& phenotype, double dt )
+{
+
+	// bounds check
+	if( check_for_out_of_bounds( pCell , 10.0 ) )
+	{
+		#pragma omp critical
+		{ cells_to_move_from_edge.push_back( pCell ); }
+		// replace_out_of_bounds_cell( pCell, 10.0 );
+		// return;
+	}
+
+	return;
+}
+
 
 void immune_submodels_setup( void )
 {
@@ -1279,7 +1304,22 @@ void immune_submodels_setup( void )
 	pCD = find_cell_definition( "fibroblast" ); 
 	pCD->functions.update_phenotype = fibroblast_submodel_info.phenotype_function;
 	pCD->functions.custom_cell_rule = fibroblast_submodel_info.mechanics_function;
-	
+
+	// set up residual
+	residual_submodel_info = CD8_submodel_info; // much shared information
+	residual_submodel_info.name = "residual model";
+	residual_submodel_info.version = immune_submodels_version;
+
+	residual_submodel_info.main_function = NULL;
+	residual_submodel_info.phenotype_function = residual_phenotype;
+	residual_submodel_info.mechanics_function = residual_mechanics;
+
+	residual_submodel_info.register_model();
+		// set functions for the corresponding cell definition
+	pCD = find_cell_definition( "residual" );
+	pCD->functions.update_phenotype = residual_submodel_info.phenotype_function;
+	pCD->functions.custom_cell_rule = residual_submodel_info.mechanics_function;
+
 	pCD->functions.update_migration_bias = immune_cell_motility_direction; 
 }
 
